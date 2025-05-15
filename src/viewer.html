@@ -34,24 +34,110 @@
 <body>
     <div class="container">
         <h1>Live Broadcast</h1>
-        <video id="videoPlayer" controls></video>
+        <video id="viewerVideo" controls autoplay></video>
+        <p id="statusMessage"></p>
     </div>
 
     <script>
-        const videoPlayer = document.getElementById('videoPlayer');
+        const viewerVideo = document.getElementById('viewerVideo');
+        const statusMessage = document.getElementById('statusMessage');
 
-        // Get the broadcast link (HLS manifest URL) from the URL parameters
+        // Get the stream link from the URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const hlsViewerUrl = urlParams.get('url');
+        const streamLink = urlParams.get('streamLink');
 
-        if (hlsViewerUrl) {
-            // Use hls.js to play the HLS stream
-            if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(hlsViewerUrl);
-                hls.attachMedia(videoPlayer);
-                hls.on(Hls.Events.MANIFEST_PARSED, function () {
-                    videoPlayer.play();
+        if (!streamLink) {
+            statusMessage.textContent = 'No stream link provided.';
+        } else {
+            const socket = new WebSocket('ws://localhost:3001'); // Replace with your WebSocket gateway URL
+
+            let peerConnection;
+
+            socket.onopen = () => {
+                console.log('Viewer connected to WebSocket');
+                socket.send(JSON.stringify({ event: 'joinStream', data: streamLink }));
+            };
+
+            socket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log('Message from server:', message);
+
+                switch (message.event) {
+                    case 'broadcastEnded':
+                        statusMessage.textContent = 'Broadcast has ended.';
+                        viewerVideo.srcObject = null; // Stop displaying the video
+                        if (peerConnection) {
+                            peerConnection.close();
+                        }
+                        break;
+                    case 'offer':
+                        handleOffer(message.data);
+                        break;
+                    case 'candidate':
+                        handleCandidate(message.data);
+                        break;
+                    default:
+                        console.log('Unknown message event:', message.event);
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                statusMessage.textContent = 'Error connecting to broadcast.';
+            };
+
+            socket.onclose = () => {
+                console.log('Viewer disconnected from WebSocket');
+                if (!statusMessage.textContent.includes('ended')) {
+                     statusMessage.textContent = 'Connection to broadcast lost.';
+                }
+            };
+
+            async function handleOffer(offer) {
+                peerConnection = new RTCPeerConnection();
+
+                peerConnection.ontrack = (event) => {
+                    viewerVideo.srcObject = event.streams[0];
+                };
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.send(JSON.stringify({ event: 'candidate', data: event.candidate }));
+                    }
+                };
+
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.send(JSON.stringify({ event: 'answer', data: answer }));
+            }
+
+            async function handleCandidate(candidate) {
+                if (peerConnection) {
+                    try {
+                        await peerConnection.addIceCandidate(candidate);
+                    } catch (e) {
+                        console.error('Error adding received ICE candidate:', e);
+                    }
+                } else {
+                    console.warn('Peer connection not established yet, ignoring ICE candidate.');
+                }
+            }
+        }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+            if (peerConnection) {
+                peerConnection.close();
+            }
+        });
+
+    </script>
+</body>
+</html>
                 });
             } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
                 // Fallback for browsers that natively support HLS (like Safari)

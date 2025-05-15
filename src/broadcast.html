@@ -58,48 +58,110 @@
 
     <script>
         const startButton = document.getElementById('startButton');
-        const broadcastLinkElement = document.getElementById('broadcastLink');
-        const videoPreview = document.getElementById('videoPreview');
+        const broadcastLinkDiv = document.getElementById('broadcastLink');
+        const videoPreview = document.getElementById('videoPreview'); // Added for local preview
+
+        let ws; // WebSocket connection
+        let peerConnection; // RTCPeerConnection
+        let stream; // Local media stream
+
+        // Connect to the WebSocket gateway
+        ws = new WebSocket(`ws://localhost:3001`); // Replace with your gateway address if different
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        ws.onmessage = async (event) => {
+            const message = JSON.parse(event.data);
+
+            switch (message.event) {
+                case 'streamCreated':
+                    const streamLink = `${window.location.origin}/viewer.html?streamId=${message.data.streamId}`;
+                    broadcastLinkDiv.textContent = `Share this link: ${streamLink}`;
+                    console.log('Stream created:', message.data.streamId);
+                    break;
+                case 'viewerJoined':
+                    console.log('Viewer joined. Setting up RTCPeerConnection...');
+                    setupPeerConnection();
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    ws.send(JSON.stringify({ event: 'offer', data: { offer: offer } }));
+                    break;
+                case 'answer':
+                    console.log('Received answer from viewer');
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(message.data.answer));
+                    break;
+                case 'candidate':
+                    console.log('Received ICE candidate');
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+                    break;
+                case 'broadcastEnded':
+                    console.log('Broadcast ended');
+                    broadcastLinkDiv.textContent = 'Broadcast has ended.';
+                    if (peerConnection) {
+                        peerConnection.close();
+                        peerConnection = null;
+                    }
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        videoPreview.srcObject = null;
+                    }
+                    startButton.disabled = false;
+                    break;
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
 
         startButton.addEventListener('click', async () => {
             try {
-                // 1. Get user media (camera and microphone)
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
-                // Display the stream in the video preview (optional)
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 videoPreview.srcObject = stream;
-
-                // 2. **Here you would use a library to publish the stream via RTMP**
-                // This is a complex step and requires a dedicated library.
-                // Example (conceptual):
-                // const rtmpPublisher = new RtmpPublisher('rtmp://your_server_address/live/YOUR_STREAM_KEY');
-                // rtmpPublisher.publish(stream);
-                // You would need to generate a unique stream key here and also in the backend
-
-                // 3. Call the backend to start the FFmpeg process
-                const streamKey = 'c12a181d-b1d8-4a22-8fbc-179b97801f4e'; // Replace with a dynamically generated unique key
-                const response = await fetch('/broadcast/start', { // Assuming your NestJS app is serving on the same origin
-                    method: 'POST', // Using POST as we are sending data (streamKey)
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ streamKey }),
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const hlsViewerUrl = await response.text();
-
-                // 4. Display the shareable link
-                broadcastLinkElement.textContent = `Share this link: ${window.location.origin}/viewer.html?url=${encodeURIComponent(hlsViewerUrl)}`;
+                ws.send(JSON.stringify({ event: 'createStream' }));
 
             } catch (error) {
                 console.error('Error starting broadcast:', error);
                 broadcastLinkElement.textContent = `Error starting broadcast: ${error.message}`;
             }
         });
+    </script>
+
+    <script>
+        // Function to set up RTCPeerConnection
+        function setupPeerConnection() {
+            peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' } // You might want to add more STUN/TURN servers
+                ]
+            });
+
+            // Add local stream tracks to the peer connection
+            stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    ws.send(JSON.stringify({ event: 'candidate', data: { candidate: event.candidate } }));
+                }
+            };
+
+            // Handle ICE connection state changes
+            peerConnection.oniceconnectionstatechange = () => {
+                console.log('ICE connection state:', peerConnection.iceConnectionState);
+            };
+
+            // Handle signaling state changes
+            peerConnection.onsignalingstatechange = () => {
+                console.log('Signaling state:', peerConnection.signalingState);
+            };
+        }
     </script>
 </body>
 </html>
