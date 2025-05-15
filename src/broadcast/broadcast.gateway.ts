@@ -5,6 +5,10 @@ import { v4 as uuidv4 } from 'uuid';
 @WebSocketGateway(3001)
 export class BroadcastGateway {
 
+  constructor() {
+    console.log('BroadcastGateway initialized');
+  }
+
   @WebSocketServer() server: Server;
 
   private streams: Map<string, { broadcasterId: string, viewerIds: string[] }> = new Map();
@@ -46,6 +50,11 @@ export class BroadcastGateway {
     this.server.to(data.targetId).emit('candidate', { candidate: data.candidate, from: client.id });
   }
 
+  handleConnection(client: Socket, ...args: any[]): void {
+    console.log(`Client connected: ${client.id}`);
+    // You can add more connection handling logic here if needed
+  }
+
 
   handleDisconnect(@ConnectedSocket() client: Socket): void {
     const streamId = this.socketToStream.get(client.id);
@@ -54,6 +63,7 @@ export class BroadcastGateway {
       if (stream) {
         if (stream.broadcasterId === client.id) {
           // Broadcaster disconnected
+          console.log(`Broadcaster disconnected: ${client.id}, ending stream ${streamId}`);
           this.streams.delete(streamId);
           stream.viewerIds.forEach(viewerId => {
             this.server.to(viewerId).emit('broadcastEnded');
@@ -63,6 +73,7 @@ export class BroadcastGateway {
         } else {
           // Viewer disconnected
           const viewerIndex = stream.viewerIds.indexOf(client.id);
+          console.log(`Viewer disconnected: ${client.id} from stream ${streamId}`);
           if (viewerIndex > -1) {
             stream.viewerIds.splice(viewerIndex, 1);
             this.socketToStream.delete(client.id);
