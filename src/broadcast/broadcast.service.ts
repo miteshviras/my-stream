@@ -7,7 +7,7 @@ export class BroadcastService {
 
   startBroadcast(streamKey: string): string {
     // In a real application, you would generate a unique stream key
-    const rtmpUrl = `rtmp://http://localhost:3000/live/${streamKey}`;
+    const rtmpUrl = `rtmp://localhost:1935/live/${streamKey}`;
     const hlsPath = `./public/hls/${streamKey}`; // Path to save HLS files
 
     // Placeholder for FFmpeg command

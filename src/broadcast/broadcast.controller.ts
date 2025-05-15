@@ -7,7 +7,8 @@ export class BroadcastController {
 
   @Post('start') // Use POST for starting a broadcast with data
   startBroadcast(@Body('streamKey') streamKey: string): string {
-    return this.broadcastService.startBroadcast(streamKey);
+    const hlsUrl = this.broadcastService.startBroadcast(streamKey);
+    return `/viewer.html?url=${encodeURIComponent(hlsUrl)}`;
   }
 
   // You would add endpoints for stopping, getting viewer links, etc.
