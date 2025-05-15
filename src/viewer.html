@@ -1,0 +1,24 @@
+const videoPlayer = document.getElementById('videoPlayer');
+
+// Get the broadcast link from the URL
+const urlParams = new URLSearchParams(window.location.search);
+const hlsViewerUrl = urlParams.get('url');
+
+if (hlsViewerUrl) {
+  // Use hls.js to play the HLS stream
+  if (Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(hlsViewerUrl);
+    hls.attachMedia(videoPlayer);
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      videoPlayer.play();
+    });
+  } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+    videoPlayer.src = hlsViewerUrl;
+    videoPlayer.addEventListener('loadedmetadata', function () {
+      videoPlayer.play();
+    });
+  }
+} else {
+  console.error('No broadcast URL provided.');
+}

@@ -1,0 +1,35 @@
+const startButton = document.getElementById('startButton');
+const broadcastLinkElement = document.getElementById('broadcastLink');
+const videoPreview = document.getElementById('videoPreview');
+
+startButton.addEventListener('click', async () => {
+  try {
+    // Get user media (camera and microphone)
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+    // Display the stream in the video preview (optional)
+    videoPreview.srcObject = stream;
+
+    // **Here you would use a library to publish the stream via RTMP**
+    // This is a complex step and requires a dedicated library.
+    // Example (conceptual):
+    // const rtmpPublisher = new RtmpPublisher('rtmp://your_server_address/live/YOUR_STREAM_KEY');
+    // rtmpPublisher.publish(stream);
+
+    // Call the backend to start the FFmpeg process
+    const streamKey = 'YOUR_UNIQUE_STREAM_KEY'; // Generate a unique key
+    const response = await fetch('/broadcast/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ streamKey }),
+    });
+    const hlsViewerUrl = await response.text();
+
+    broadcastLinkElement.textContent = `Share this link: ${hlsViewerUrl}`;
+
+  } catch (error) {
+    console.error('Error starting broadcast:', error);
+  }
+});
