@@ -7,7 +7,7 @@ export class BroadcastService {
 
   startBroadcast(streamKey: string): string {
     // In a real application, you would generate a unique stream key
-    const rtmpUrl = `rtmp://your_server_address/live/${streamKey}`;
+    const rtmpUrl = `rtmp://http://localhost:3000/live/${streamKey}`;
     const hlsPath = `./public/hls/${streamKey}`; // Path to save HLS files
 
     // Placeholder for FFmpeg command
@@ -22,7 +22,7 @@ export class BroadcastService {
       console.error(`FFmpeg stderr: ${stderr}`);
     });
 
-    const hlsUrl = `http://your_server_address/hls/${streamKey}/stream.m3u8`; // URL to access HLS stream
+    const hlsUrl = `http://localhost:3000/hls/${streamKey}/stream.m3u8`; // URL to access HLS stream
     this.activeBroadcasts.set(streamKey, { rtmpUrl, hlsUrl });
 
     return hlsUrl; // Return the HLS viewer URL
