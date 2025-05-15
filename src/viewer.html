@@ -28,9 +28,9 @@
             margin-bottom: 20px;
         }
     </style>
-    <!-- Include hls.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
+
+
 <body>
     <div class="container">
         <h1>Live Broadcast</h1>
@@ -38,7 +38,7 @@
         <p id="statusMessage"></p>
     </div>
 
-    <script>
+    <script id="viewerScript">
         const viewerVideo = document.getElementById('viewerVideo');
         const statusMessage = document.getElementById('statusMessage');
 
@@ -136,20 +136,6 @@
         });
 
     </script>
-</body>
-</html>
-                });
-            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                // Fallback for browsers that natively support HLS (like Safari)
-                videoPlayer.src = hlsViewerUrl;
-                videoPlayer.addEventListener('loadedmetadata', function () {
-                    videoPlayer.play();
-                });
-            }
-        } else {
-            console.error('No broadcast URL provided.');
-            // Optionally display a message to the user
-        }
-    </script>
+
 </body>
 </html>
