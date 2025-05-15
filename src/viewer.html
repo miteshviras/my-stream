@@ -1,24 +1,69 @@
-const videoPlayer = document.getElementById('videoPlayer');
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Broadcast Viewer</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px; /* Adjust as needed */
+            height: auto; /* Maintain aspect ratio */
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+    </style>
+    <!-- Include hls.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Broadcast</h1>
+        <video id="videoPlayer" controls></video>
+    </div>
 
-// Get the broadcast link from the URL
-const urlParams = new URLSearchParams(window.location.search);
-const hlsViewerUrl = urlParams.get('url');
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
 
-if (hlsViewerUrl) {
-  // Use hls.js to play the HLS stream
-  if (Hls.isSupported()) {
-    const hls = new Hls();
-    hls.loadSource(hlsViewerUrl);
-    hls.attachMedia(videoPlayer);
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      videoPlayer.play();
-    });
-  } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-    videoPlayer.src = hlsViewerUrl;
-    videoPlayer.addEventListener('loadedmetadata', function () {
-      videoPlayer.play();
-    });
-  }
-} else {
-  console.error('No broadcast URL provided.');
-}
+        // Get the broadcast link (HLS manifest URL) from the URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const hlsViewerUrl = urlParams.get('url');
+
+        if (hlsViewerUrl) {
+            // Use hls.js to play the HLS stream
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(hlsViewerUrl);
+                hls.attachMedia(videoPlayer);
+                hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                    videoPlayer.play();
+                });
+            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                // Fallback for browsers that natively support HLS (like Safari)
+                videoPlayer.src = hlsViewerUrl;
+                videoPlayer.addEventListener('loadedmetadata', function () {
+                    videoPlayer.play();
+                });
+            }
+        } else {
+            console.error('No broadcast URL provided.');
+            // Optionally display a message to the user
+        }
+    </script>
+</body>
+</html>

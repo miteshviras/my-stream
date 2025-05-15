@@ -1,35 +1,105 @@
-const startButton = document.getElementById('startButton');
-const broadcastLinkElement = document.getElementById('broadcastLink');
-const videoPreview = document.getElementById('videoPreview');
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Broadcast Page</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        #startButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #startButton:hover {
+            background-color: #0056b3;
+        }
+        #broadcastLink {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9e9eb;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        #videoPreview {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Start Your Broadcast</h1>
+        <button id="startButton">Start Broadcast</button>
+        <video id="videoPreview" controls autoplay muted></video>
+        <div id="broadcastLink"></div>
+    </div>
 
-startButton.addEventListener('click', async () => {
-  try {
-    // Get user media (camera and microphone)
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    <script>
+        const startButton = document.getElementById('startButton');
+        const broadcastLinkElement = document.getElementById('broadcastLink');
+        const videoPreview = document.getElementById('videoPreview');
 
-    // Display the stream in the video preview (optional)
-    videoPreview.srcObject = stream;
+        startButton.addEventListener('click', async () => {
+            try {
+                // 1. Get user media (camera and microphone)
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
-    // **Here you would use a library to publish the stream via RTMP**
-    // This is a complex step and requires a dedicated library.
-    // Example (conceptual):
-    // const rtmpPublisher = new RtmpPublisher('rtmp://your_server_address/live/YOUR_STREAM_KEY');
-    // rtmpPublisher.publish(stream);
+                // Display the stream in the video preview (optional)
+                videoPreview.srcObject = stream;
 
-    // Call the backend to start the FFmpeg process
-    const streamKey = 'YOUR_UNIQUE_STREAM_KEY'; // Generate a unique key
-    const response = await fetch('/broadcast/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ streamKey }),
-    });
-    const hlsViewerUrl = await response.text();
+                // 2. **Here you would use a library to publish the stream via RTMP**
+                // This is a complex step and requires a dedicated library.
+                // Example (conceptual):
+                // const rtmpPublisher = new RtmpPublisher('rtmp://your_server_address/live/YOUR_STREAM_KEY');
+                // rtmpPublisher.publish(stream);
+                // You would need to generate a unique stream key here and also in the backend
 
-    broadcastLinkElement.textContent = `Share this link: ${hlsViewerUrl}`;
+                // 3. Call the backend to start the FFmpeg process
+                const streamKey = 'c12a181d-b1d8-4a22-8fbc-179b97801f4e'; // Replace with a dynamically generated unique key
+                const response = await fetch('/broadcast/start', { // Assuming your NestJS app is serving on the same origin
+                    method: 'POST', // Using POST as we are sending data (streamKey)
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ streamKey }),
+                });
 
-  } catch (error) {
-    console.error('Error starting broadcast:', error);
-  }
-});
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const hlsViewerUrl = await response.text();
+
+                // 4. Display the shareable link
+                broadcastLinkElement.textContent = `Share this link: ${window.location.origin}/viewer.html?url=${encodeURIComponent(hlsViewerUrl)}`;
+
+            } catch (error) {
+                console.error('Error starting broadcast:', error);
+                broadcastLinkElement.textContent = `Error starting broadcast: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
